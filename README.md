@@ -43,24 +43,11 @@ Kernels are written in SYCL/DPC++ and leverage [oneDNN](https://github.com/oneap
 
 ## Requirements
 
-For a published wheel, use a compatible Python environment, an Intel GPU driver
-and runtime, and a PyTorch XPU installation. Install PyTorch separately using the
-[PyTorch installation instructions](https://pytorch.org/get-started/locally/)
-and select the XPU build. The wheel does not install PyTorch automatically.
-Prebuilt wheels do not require CMake, Ninja, or the oneAPI compiler.
-
-The following requirements apply to **source builds of the current `main` branch**:
-
-- **Python**: 3.12 (used by `Dockerfile.xpu`)
-- **PyTorch**: 2.14.0+xpu (pinned in `pyproject.toml` and `requirements.txt`)
-- **oneAPI**: 2026.1 (provided by `Dockerfile.xpu`; [Base Toolkit download](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html))
+- **Python**: 3.12
+- **PyTorch**: 2.14.0+xpu
+- **oneAPI**: 2026.1 ([Base Toolkit download](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html))
 - **CMake**: ≥ 3.26
 - **Ninja** build system
-
-Published releases can target a different PyTorch version from the current
-source branch. Check the selected release's build requirements before choosing
-a wheel/PyTorch combination. A wheel's Python compatibility tag does not describe
-its PyTorch compatibility.
 
 ## Getting Started
 
