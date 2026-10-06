@@ -74,13 +74,13 @@ With a compatible PyTorch XPU installation already available, install the
 published package from PyPI into your active environment:
 
 ```bash
-python -m pip install --upgrade vllm-xpu-kernels
+pip install --upgrade vllm-xpu-kernels
 ```
 
 To pin a specific release, for example:
 
 ```bash
-python -m pip install "vllm-xpu-kernels==0.1.15.4"
+pip install "vllm-xpu-kernels==0.1.15.4"
 ```
 
 ### Verify Installation
@@ -168,7 +168,7 @@ In either environment, install the dependencies from the mounted or cloned
 repository:
 
 ```bash
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ### Build Options
@@ -179,25 +179,25 @@ active. The `--no-build-isolation` variants use the dependencies installed above
 **Development install** (editable, source in current directory):
 
 ```bash
-python -m pip install --extra-index-url=https://download.pytorch.org/whl/xpu -e . -v
+pip install --extra-index-url=https://download.pytorch.org/whl/xpu -e . -v
 # Faster: skip build isolation if dependencies are already present
-python -m pip install --no-build-isolation -e . -v
+pip install --no-build-isolation -e . -v
 ```
 
 **Standard install** (to site-packages):
 
 ```bash
-python -m pip install --extra-index-url=https://download.pytorch.org/whl/xpu .
+pip install --extra-index-url=https://download.pytorch.org/whl/xpu .
 # or
-python -m pip install --no-build-isolation .
+pip install --no-build-isolation .
 ```
 
 **Build a wheel** (output goes to `dist/`):
 
 ```bash
-python -m pip wheel --extra-index-url=https://download.pytorch.org/whl/xpu --wheel-dir dist .
+pip wheel --extra-index-url=https://download.pytorch.org/whl/xpu --wheel-dir dist .
 # or
-python -m pip wheel --no-build-isolation --wheel-dir dist .
+pip wheel --no-build-isolation --wheel-dir dist .
 ```
 
 **Incremental rebuild** (fastest for iterative development):
@@ -215,7 +215,7 @@ After [vLLM RFC#33214](https://github.com/vllm-project/vllm/issues/33214) was co
 Configure attention kernel coverage when building from source:
 
 ```bash
-VLLM_CHUNK_PREFILL_CONFIG=chunk_prefill_full.conf VLLM_PAGED_DECODE_CONFIG=paged_decode_full.conf python -m pip install --no-build-isolation .
+VLLM_CHUNK_PREFILL_CONFIG=chunk_prefill_full.conf VLLM_PAGED_DECODE_CONFIG=paged_decode_full.conf pip install --no-build-isolation .
 ```
 
 See [KERNEL_CONFIGURATION.md](KERNEL_CONFIGURATION.md) for detailed guidance on kernel configuration, presets, and troubleshooting missing kernels.
