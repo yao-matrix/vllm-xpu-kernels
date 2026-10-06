@@ -10,8 +10,11 @@ A [vLLM](https://github.com/vllm-project/vllm) component that provides optimized
 - [Getting Started](#getting-started)
   - [How It Works](#how-it-works)
   - [Installation](#installation)
+  - [Verify Installation](#verify-installation)
+  - [Build from Source](#build-from-source)
   - [Build Options](#build-options)
   - [Using with vLLM](#using-with-vllm)
+  - [Kernel Configuration](#kernel-configuration)
 - [Testing](#testing)
 - [Benchmarks](#benchmarks)
 - [License](#license)
@@ -40,11 +43,24 @@ Kernels are written in SYCL/DPC++ and leverage [oneDNN](https://github.com/oneap
 
 ## Requirements
 
-- **Python**: 3.12
-- **PyTorch**: 2.14.0+xpu
-- **oneAPI**: 2026.1 ([Base Toolkit download](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html))
+For a published wheel, use a compatible Python environment, an Intel GPU driver
+and runtime, and a PyTorch XPU installation. Install PyTorch separately using the
+[PyTorch installation instructions](https://pytorch.org/get-started/locally/)
+and select the XPU build. The wheel does not install PyTorch automatically.
+Prebuilt wheels do not require CMake, Ninja, or the oneAPI compiler.
+
+The following requirements apply to **source builds of the current `main` branch**:
+
+- **Python**: 3.12 (used by `Dockerfile.xpu`)
+- **PyTorch**: 2.14.0+xpu (pinned in `pyproject.toml` and `requirements.txt`)
+- **oneAPI**: 2026.1 (provided by `Dockerfile.xpu`; [Base Toolkit download](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html))
 - **CMake**: ≥ 3.26
 - **Ninja** build system
+
+Published releases can target a different PyTorch version from the current
+source branch. Check the selected release's build requirements before choosing
+a wheel/PyTorch combination. A wheel's Python compatibility tag does not describe
+its PyTorch compatibility.
 
 ## Getting Started
 
@@ -53,36 +69,75 @@ Kernels are written in SYCL/DPC++ and leverage [oneDNN](https://github.com/oneap
 vLLM calls `import vllm_xpu_kernels._C` at startup, which registers all custom ops into the PyTorch dispatcher. From that point on, XPU ops are dispatched automatically whenever vLLM runs on Intel GPU hardware — no additional code changes are required in vLLM itself.
 
 ### Installation
-`vllm-xpu-kernels` is released through `pip`, you can use below command to install it.
+
+With a compatible PyTorch XPU installation already available, install the
+published package from PyPI into your active environment:
 
 ```bash
-pip install vllm-xpu-kernels
+python -m pip install --upgrade vllm-xpu-kernels
 ```
 
-### Build from source
+To pin a specific release, for example:
 
-**1. Prepare oneAPI**
+```bash
+python -m pip install "vllm-xpu-kernels==0.1.15.4"
+```
+
+### Verify Installation
+
+Run this check in the environment where you installed the package. It loads the
+core and XPU native extensions and reports the package version, PyTorch version,
+and whether PyTorch can access an XPU:
+
+```bash
+python - <<'PY'
+from importlib.metadata import version
+
+import torch
+import vllm_xpu_kernels._C
+import vllm_xpu_kernels._xpu_C
+
+print("vllm-xpu-kernels:", version("vllm-xpu-kernels"))
+print("PyTorch:", torch.__version__)
+print("XPU available:", torch.xpu.is_available())
+PY
+```
+
+### Build from Source
+
+**1. Clone the repository**
+
+Run these commands on the host before building the Docker image or setting up a
+bare-metal build:
+
+```bash
+git clone https://github.com/vllm-project/vllm-xpu-kernels.git
+cd vllm-xpu-kernels
+```
+
+**2. Prepare oneAPI**
 
 - Option 1: Docker Container
 
-  You are recommended to build a docker image using the `Dockerfile.xpu` included in this repo to build `vllm-xpu-kernels`. Please follow below command to build and launch the docker container. Configure proxies as needed for your network.
+  Build the development image using this repository's `Dockerfile.xpu`.
+  Configure proxies as needed for your network.
 
   ```bash
-  # Clone the repository and enter its directory on the host before building the Docker image.
-
-  git clone https://github.com/vllm-project/vllm-xpu-kernels.git
-  cd vllm-xpu-kernels
   docker build --no-cache \
                -f ./Dockerfile.xpu \
                -t vllm/vllm-xpu-kernels:latest .
   ```
 
+  Launch the container with the checkout mounted as its working directory:
+
   ```bash
   docker run -it \
              --privileged \
              -v /dev/dri/by-path:/dev/dri/by-path \
+             -v "$(pwd):/workspace/vllm-xpu-kernels" \
              --device=/dev/dri \
              --ipc=host \
+             --workdir /workspace/vllm-xpu-kernels \
              --name vllm-xpu-kernels \
              --entrypoint /bin/bash \
              vllm/vllm-xpu-kernels:latest
@@ -90,51 +145,59 @@ pip install vllm-xpu-kernels
 
 - Option 2: Bare-metal
 
-  If you are working on a bare-metal machine, you need download and install the [Intel oneAPI Base Toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html).
+  Install the [Intel oneAPI Base Toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html)
+  matching the source-build requirements above.
 
-
-After the environment is well installed, you need source the environment with below command:
+Initialize the oneAPI environment in the shell where you will build:
 
 ```bash
 source /opt/intel/oneapi/setvars.sh
 ```
 
-**2. Create a virtual environment and install dependencies**
+**3. Set up the Python environment and install dependencies**
+
+The Docker image already activates its `/opt/venv` environment. For a bare-metal
+build, create and activate a virtual environment from the repository directory:
 
 ```bash
-python -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
+```
 
-git clone https://github.com/vllm-project/vllm-xpu-kernels
-cd vllm-xpu-kernels
+In either environment, install the dependencies from the mounted or cloned
+repository:
 
-pip install -r requirements.txt
+```bash
+python -m pip install -r requirements.txt
 ```
 
 ### Build Options
 
+Run these commands from the repository directory with the build environment
+active. The `--no-build-isolation` variants use the dependencies installed above.
+
 **Development install** (editable, source in current directory):
 
 ```bash
-pip install --extra-index-url=https://download.pytorch.org/whl/xpu -e . -v
+python -m pip install --extra-index-url=https://download.pytorch.org/whl/xpu -e . -v
 # Faster: skip build isolation if dependencies are already present
-pip install --no-build-isolation -e . -v
+python -m pip install --no-build-isolation -e . -v
 ```
 
 **Standard install** (to site-packages):
 
 ```bash
-pip install --extra-index-url=https://download.pytorch.org/whl/xpu .
+python -m pip install --extra-index-url=https://download.pytorch.org/whl/xpu .
 # or
-pip install --no-build-isolation .
+python -m pip install --no-build-isolation .
 ```
 
 **Build a wheel** (output goes to `dist/`):
 
 ```bash
-pip wheel --extra-index-url=https://download.pytorch.org/whl/xpu --wheel-dir dist .
+python -m pip wheel --extra-index-url=https://download.pytorch.org/whl/xpu --wheel-dir dist .
 # or
-pip wheel --no-build-isolation --wheel-dir dist .
+python -m pip wheel --no-build-isolation --wheel-dir dist .
 ```
 
 **Incremental rebuild** (fastest for iterative development):
@@ -149,10 +212,10 @@ After [vLLM RFC#33214](https://github.com/vllm-project/vllm/issues/33214) was co
 
 ### Kernel Configuration
 
-By default, vLLM-XPU compiles kernels for common models (Llama, Qwen, DeepSeek). For customization:
+Configure attention kernel coverage when building from source:
 
 ```bash
-VLLM_CHUNK_PREFILL_CONFIG=chunk_prefill_full.conf VLLM_PAGED_DECODE_CONFIG=paged_decode_full.conf pip install .
+VLLM_CHUNK_PREFILL_CONFIG=chunk_prefill_full.conf VLLM_PAGED_DECODE_CONFIG=paged_decode_full.conf python -m pip install --no-build-isolation .
 ```
 
 See [KERNEL_CONFIGURATION.md](KERNEL_CONFIGURATION.md) for detailed guidance on kernel configuration, presets, and troubleshooting missing kernels.
